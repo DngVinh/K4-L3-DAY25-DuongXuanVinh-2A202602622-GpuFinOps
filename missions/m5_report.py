@@ -9,6 +9,8 @@ import os
 from missions._common import num, catalog_by_type, ROOT
 from finops import report, sustainability
 from missions import m1_efficiency_audit, m2_inference_levers, m3_purchasing
+from missions.submission import technical_sections, writeup
+from missions import m4_allocation
 
 DAYS = 30
 # one tier down for over-provisioned ("util-lie") GPUs
@@ -22,7 +24,7 @@ def run(verbose: bool = True) -> dict:
     cat = catalog_by_type()
 
     # --- buckets ---
-    infer_savings = (r2["baseline_daily"] - r2["optimized_daily"]) * DAYS
+    infer_savings = (r2["baseline_exact"] - r2["optimized_exact"]) * DAYS
     purchasing_savings = r3["on_demand_monthly"] - r3["optimized_monthly"]
 
     idle_savings = r1["idle_waste_daily"] * DAYS
@@ -34,12 +36,14 @@ def run(verbose: bool = True) -> dict:
         rightsize_savings += max(0.0, delta) * 24 * DAYS
 
     levers = {
-        "Inference (cascade/cache/batch)": round(infer_savings),
-        "Purchasing (spot/reserved)": round(purchasing_savings),
-        "Right-size util-lies": round(rightsize_savings),
-        "Kill idle GPUs": round(idle_savings),
+        "Inference (cascade/cache/batch)": round(infer_savings, 2),
+        "Purchasing (spot/reserved)": round(purchasing_savings, 2),
+        # Telemetry GPU IDs have no join key to workloads. Do not double-count
+        # on-demand opportunities on top of the spot/reserved savings ledger.
+        "Right-size util-lies": 0.0,
+        "Kill idle GPUs": 0.0,
     }
-    baseline = r2["baseline_daily"] * DAYS + r3["on_demand_monthly"]
+    baseline = round(r2["baseline_exact"] * DAYS + r3["on_demand_monthly"], 2)
     optimized = baseline - sum(levers.values())
     total_pct = sum(levers.values()) / baseline * 100 if baseline else 0.0
 
@@ -50,21 +54,26 @@ def run(verbose: bool = True) -> dict:
         "wh_per_query": wh,
         "carbon_g": sustainability.carbon_g(wh, "us-east-1"),
         "best_region": min(sustainability.REGION_CARBON, key=sustainability.REGION_CARBON.get),
+        "cheapest_region": min(sustainability.REGION_PRICE_KWH, key=sustainability.REGION_PRICE_KWH.get),
     }
 
     md = report.build_report(baseline, optimized, levers, sustainability=sust)
+    r4 = m4_allocation.run(verbose=False)
+    md += technical_sections(r1, r2, r3, r4, baseline, optimized, rightsize_savings, idle_savings)
     out_md = os.path.join(ROOT, "outputs", "report.md")
     os.makedirs(os.path.dirname(out_md), exist_ok=True)
-    with open(out_md, "w") as f:
+    with open(out_md, "w", encoding="utf-8") as f:
         f.write(md)
-    png = report.savings_waterfall(levers, os.path.join(ROOT, "outputs", "savings.png"))
+    with open(os.path.join(ROOT, "outputs", "writeup.md"), "w", encoding="utf-8") as f:
+        f.write(writeup(r1, r2, r3, r4, baseline, optimized))
+    png = report.savings_waterfall(levers, os.path.join(ROOT, "outputs", "savings.png"), baseline)
 
     if verbose:
         print("== M5 Optimization Report ==")
         print(md)
         print(f"\nWritten: outputs/report.md" + (f" + outputs/savings.png" if png else " (matplotlib absent: PNG skipped)"))
 
-    return {"baseline_monthly": round(baseline), "optimized_monthly": round(optimized),
+    return {"baseline_monthly": round(baseline, 2), "optimized_monthly": round(optimized, 2),
             "levers": levers, "total_savings_pct": round(total_pct, 1)}
 
 

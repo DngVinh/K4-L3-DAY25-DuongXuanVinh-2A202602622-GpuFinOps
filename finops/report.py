@@ -10,10 +10,10 @@ def build_report(baseline_usd: float, optimized_usd: float, levers: dict,
     lines = [
         "# NimbusAI — GPU Cost Optimization Report",
         "",
-        f"**Period:** {period}  ",
-        f"**Baseline spend:** ${baseline_usd:,.0f}  ",
-        f"**Optimized spend:** ${optimized_usd:,.0f}  ",
-        f"**Projected savings:** ${savings:,.0f}  (**{pct:.0f}%**)",
+        f"**Period:** {period}", "",
+        f"**Baseline spend:** ${baseline_usd:,.2f}", "",
+        f"**Optimized spend:** ${optimized_usd:,.2f}", "",
+        f"**Projected savings:** ${savings:,.2f}  (**{pct:.0f}%**; precise: {pct:.2f}%)",
         "",
         "## Savings by lever",
         "",
@@ -21,22 +21,23 @@ def build_report(baseline_usd: float, optimized_usd: float, levers: dict,
         "|---|---|",
     ]
     for name, amount in levers.items():
-        lines.append(f"| {name} | ${amount:,.0f} |")
+        lines.append(f"| {name} | ${amount:,.2f} |")
     if sustainability:
         lines += [
             "",
             "## Sustainability",
             "",
-            f"- Energy per query: {sustainability.get('wh_per_query', 0):.2f} Wh",
-            f"- Carbon per query: {sustainability.get('carbon_g', 0):.3f} gCO2e",
-            f"- Cheapest+cleanest region: {sustainability.get('best_region', 'n/a')}",
+            f"- Energy per query (illustrative ordinary query): {sustainability.get('wh_per_query', 0):.2f} Wh",
+            f"- Carbon per query (us-east-1, illustrative): {sustainability.get('carbon_g', 0):.3f} gCO2e",
+            f"- Cleanest region: {sustainability.get('best_region', 'n/a')}",
+            f"- Cheapest electricity region: {sustainability.get('cheapest_region', 'n/a')}",
         ]
     lines += ["", "_Figures are June-2026 as-of snapshots; re-baseline before acting._"]
     return "\n".join(lines)
 
 
-def savings_waterfall(levers: dict, path: str) -> str:
-    """Write a simple savings bar chart PNG. Returns the path. No-op if matplotlib absent."""
+def savings_waterfall(levers: dict, path: str, baseline_usd: float | None = None) -> str:
+    """Write floating savings steps with baseline and final spend totals."""
     try:
         import matplotlib
         matplotlib.use("Agg")
@@ -45,11 +46,26 @@ def savings_waterfall(levers: dict, path: str) -> str:
         return ""
     names = list(levers.keys())
     vals = [levers[n] for n in names]
-    fig, ax = plt.subplots(figsize=(8, 4.5))
-    ax.bar(names, vals, color="#2e548a")
-    ax.set_ylabel("Savings (USD / month)")
-    ax.set_title("GPU cost savings by FinOps lever")
-    plt.xticks(rotation=20, ha="right")
+    baseline = baseline_usd if baseline_usd is not None else sum(vals)
+    labels = ["Baseline"] + names + ["Optimized"]
+    fig, ax = plt.subplots(figsize=(12, 6))
+    remaining = baseline
+    ax.bar(0, baseline, color="#2e548a")
+    ax.text(0, baseline, f"${baseline:,.2f}", ha="center", va="bottom", fontsize=9)
+    for i, amount in enumerate(vals, 1):
+        after = remaining - amount
+        ax.plot([i-1+0.4, i-0.4], [remaining, remaining], color="#888888", linewidth=1)
+        ax.bar(i, amount, bottom=after, color="#25876a")
+        ax.text(i, remaining, f"-${amount:,.2f}" if amount else "$0 booked\n(conditional)",
+                ha="center", va="bottom", fontsize=9)
+        remaining = after
+    ax.bar(len(labels)-1, remaining, color="#2e548a")
+    ax.text(len(labels)-1, remaining, f"${remaining:,.2f}", ha="center", va="bottom", fontsize=9)
+    ax.set_xticks(range(len(labels)), labels, rotation=18, ha="right")
+    ax.set_ylim(0, baseline*1.18)
+    ax.set_ylabel("Spend (USD / month)")
+    ax.set_title("NimbusAI: reconciled monthly savings waterfall")
+    ax.spines[["top", "right"]].set_visible(False)
     plt.tight_layout()
     fig.savefig(path, dpi=110)
     plt.close(fig)

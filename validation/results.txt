@@ -1,0 +1,68 @@
+Python: 3.14.7 (tags/v3.14.7:823f032, Aug  5 2026, 10:51:32) [MSC v.1944 64 bit (AMD64)]
+Workspace: C:\Users\Duong Vinh\K4-L3-DAY25-DuongXuanVinh-2A202602622-GpuFinOps
+
+$ verify.py
+Exit code: 0
+Generated: price_catalog.csv, gpu_telemetry.csv, token_usage.csv, workloads.csv
+
+============================================================
+  LAB 25 VERIFY
+============================================================
+  [PASS] M1 flags the GPU-Util lie (gpu-h100-4)  (['gpu-h100-4', 'gpu-a10g-1'])
+  [PASS] M1 detects idle waste  ($20.0/day)
+  [PASS] M2 $/1M-token drops after optimization  (6.488 -> 1.126)
+  [PASS] M2 inference savings in 60-95% band  (82.6%)
+  [PASS] M3 recommends a spot tier  ({'reserved', 'spot'})
+  [PASS] M3 recommends a reserved tier  ({'reserved', 'spot'})
+  [PASS] M3 purchasing saves money  (38.5%)
+  [PASS] M4 tag coverage 85-100%  (92%)
+  [PASS] M4 chargeback gate is open  (True)
+  [PASS] M5 total savings in 40-95% band  (42.1%)
+  [PASS] M5 report.md written
+------------------------------------------------------------
+  11/11 checks passed
+============================================================
+
+
+$ -m pytest -q
+Exit code: 0
+...............                                                          [100%]
+15 passed in 0.92s
+
+
+$ validation/check_extensions.py
+Exit code: 0
+test_carbon_uses_actual_days_and_training_only (__main__.ExtensionChecks.test_carbon_uses_actual_days_and_training_only) ... ok
+test_five_percent_cap_reaches_target_and_preserves_group_total (__main__.ExtensionChecks.test_five_percent_cap_reaches_target_and_preserves_group_total) ... ok
+test_full_export_reconciles_with_inference (__main__.ExtensionChecks.test_full_export_reconciles_with_inference) ... ok
+test_purchasing_charges_unused_reserved_hours (__main__.ExtensionChecks.test_purchasing_charges_unused_reserved_hours) ... ok
+test_reasoning_counterfactual_has_analytic_expected_result (__main__.ExtensionChecks.test_reasoning_counterfactual_has_analytic_expected_result) ... ok
+test_reasoning_empty_input_and_invalid_cap (__main__.ExtensionChecks.test_reasoning_empty_input_and_invalid_cap) ... ok
+test_reasoning_ten_percent_cap_is_nonbinding (__main__.ExtensionChecks.test_reasoning_ten_percent_cap_is_nonbinding) ... ok
+test_rightsize_excludes_training_and_empty_input (__main__.ExtensionChecks.test_rightsize_excludes_training_and_empty_input) ... ok
+test_rightsize_rejects_bandwidth_regression (__main__.ExtensionChecks.test_rightsize_rejects_bandwidth_regression) ... ok
+test_rightsize_rejects_cheap_gpu_with_insufficient_vram (__main__.ExtensionChecks.test_rightsize_rejects_cheap_gpu_with_insufficient_vram) ... ok
+
+----------------------------------------------------------------------
+Ran 10 tests in 0.073s
+
+OK
+
+
+$ bonus/litellm_tracker/demo.py
+Exit code: 0
+BLOCKED after 10 chat requests: key=team-chat would spend $0.0507 > cap $0.05
+
+per-key spend: {'team-chat': 0.046, 'team-eval': 0.0003}
+requests logged: 15
+
+
+$ git diff --exit-code -- tests verify.py data
+Exit code: 0
+
+
+$ git diff --check
+Exit code: 0
+warning: in the working copy of 'missions/submission.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'outputs/focus_export.csv', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'validation/run_checks.py', LF will be replaced by CRLF the next time Git touches it

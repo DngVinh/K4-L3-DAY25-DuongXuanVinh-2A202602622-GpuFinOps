@@ -1,5 +1,35 @@
 # Lab 25 — Tối ưu hóa Chi phí GPU (GPU FinOps Workshop)
 
+## Bài nộp — Dương Xuân Vinh · 2A202602622
+
+Repo public: [K4-L3-DAY25-DuongXuanVinh-2A202602622-GpuFinOps](https://github.com/DngVinh/K4-L3-DAY25-DuongXuanVinh-2A202602622-GpuFinOps).
+
+| File nộp | Nội dung |
+|---|---|
+| [outputs/report.md](outputs/report.md) | Baseline/optimized, từng lever, điện năng và CO₂, ba extensions |
+| [outputs/savings.png](outputs/savings.png) | Waterfall bốn lever; phân biệt savings đã tính và cơ hội conditional |
+| [outputs/focus_export.csv](outputs/focus_export.csv) | Đủ 2.400 request, đối soát với tổng bill inference |
+| [outputs/writeup.md](outputs/writeup.md) | Bài viết ngắn trả lời đủ năm câu hỏi yêu cầu |
+
+Kết quả đã chạy: **verify 11/11**, **pytest 15/15**, **10 kiểm tra bổ sung pass**.
+Inference giảm **82,6%**: **$6,488 → $1,126/1M-token**; portfolio mô phỏng giảm
+**42,09%**. Ba extensions: right-sizing theo MBU/VRAM/bandwidth, ngân sách reasoning,
+và carbon-aware regional scheduling. Giả định và giới hạn được ghi trong báo cáo.
+
+[Đối chiếu rubric](outputs/criteria.md) · [Log kiểm tra](validation/results.txt) ·
+[Bộ file nộp ZIP](outputs/submission.zip).
+
+Tái lập toàn bộ kiểm tra từ repo root sau khi cài `requirements.txt`:
+
+```bash
+python validation/run_checks.py
+```
+
+Lệnh này chạy verify, 15 tests gốc, kiểm tra extensions và ghi log vào
+`validation/results.txt`. Trên Windows, có thể dùng `.venv\Scripts\python.exe`.
+
+---
+
 > **AICB · Phase 2 · Track 2 (Infrastructure) · Day 25**
 > Kết hợp với slide `day25-gpu-finops-cost-optimization`.
 > Đầu ra chính: **Báo cáo chi phí GPU (baseline vs. optimized)** — đầu vào cho Milestone 2.

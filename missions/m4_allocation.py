@@ -18,26 +18,26 @@ TAGS = ["team", "project"]
 def run(verbose: bool = True) -> dict:
     rows = load_csv("token_usage.csv")
     priced = []
-    for r in rows:
+    for index, r in enumerate(rows):
         inp, out = int(num(r["input_tokens"])), int(num(r["output_tokens"]))
         pin, pout = MODEL_PRICES[r["route_tier"]]
         cost = pricing.request_cost(inp, out, pin, pout,
                                     cached_in=int(num(r["cached_input_tokens"])),
                                     batch=bool(int(num(r["is_batch"]))))
         priced.append({"team": r["team"], "project": r["project"],
-                       "service": "gpu-inference", "cost": cost})
+                       "service": "gpu-inference", "resource_id": f"request-{index:04d}", "cost": cost})
 
     by_team = allocation.cost_by_tag(priced, "team")
     by_project = allocation.cost_by_tag(priced, "project")
     coverage = allocation.tag_coverage(priced, TAGS)
     ready = allocation.chargeback_ready(coverage)
 
-    # write a FOCUS-style export (first 50 rows as a sample)
-    focus = allocation.to_focus_rows(priced[:50])
+    # Export every request so the billing total reconciles with M2.
+    focus = allocation.to_focus_rows(priced)
     out_path = os.path.join(ROOT, "outputs", "focus_export.csv")
     os.makedirs(os.path.dirname(out_path), exist_ok=True)
-    with open(out_path, "w", newline="") as f:
-        w = csv.writer(f)
+    with open(out_path, "w", newline="", encoding="utf-8") as f:
+        w = csv.writer(f, lineterminator="\n")
         w.writerow(["BillingAccountId", "ChargePeriodStart", "ServiceCategory",
                     "ServiceName", "ResourceId", "BilledCost", "BillingCurrency", "team", "project"])
         for fr in focus:
@@ -55,7 +55,9 @@ def run(verbose: bool = True) -> dict:
 
     return {"by_team": {k: round(v, 2) for k, v in by_team.items()},
             "by_project": {k: round(v, 2) for k, v in by_project.items()},
-            "tag_coverage": round(coverage, 3), "chargeback_ready": ready}
+            "tag_coverage": round(coverage, 3), "tag_coverage_exact": coverage,
+            "chargeback_ready": ready, "total_exact": sum(r["cost"] for r in priced),
+            "by_team_exact": by_team, "export_rows": len(focus)}
 
 
 if __name__ == "__main__":
